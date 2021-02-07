@@ -1,0 +1,4 @@
+"Src/Helpers/logger.o"
+"Src/main.o"
+"Src/systeminit.o"
+"Startup/startup_stm32f429zitx.o"
