@@ -27,27 +27,27 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   ALLOC
  11 .ARM.attributes 00000030  00000000  00000000  00020068  2**0
                   CONTENTS, READONLY
- 12 .debug_info   00001b8e  00000000  00000000  00020098  2**0
+ 12 .debug_info   00001d63  00000000  00000000  00020098  2**0
                   CONTENTS, READONLY, DEBUGGING
- 13 .debug_abbrev 00000638  00000000  00000000  00021c26  2**0
+ 13 .debug_abbrev 000006d7  00000000  00000000  00021dfb  2**0
                   CONTENTS, READONLY, DEBUGGING
- 14 .debug_aranges 00000128  00000000  00000000  00022260  2**3
+ 14 .debug_aranges 00000150  00000000  00000000  000224d8  2**3
                   CONTENTS, READONLY, DEBUGGING
- 15 .debug_ranges 000000d0  00000000  00000000  00022388  2**3
+ 15 .debug_ranges 000000f8  00000000  00000000  00022628  2**3
                   CONTENTS, READONLY, DEBUGGING
- 16 .debug_macro  0002128c  00000000  00000000  00022458  2**0
+ 16 .debug_macro  00021298  00000000  00000000  00022720  2**0
                   CONTENTS, READONLY, DEBUGGING
- 17 .debug_line   00001b42  00000000  00000000  000436e4  2**0
+ 17 .debug_line   00001bc2  00000000  00000000  000439b8  2**0
                   CONTENTS, READONLY, DEBUGGING
- 18 .debug_str    000b4ebd  00000000  00000000  00045226  2**0
+ 18 .debug_str    000b4fcf  00000000  00000000  0004557a  2**0
                   CONTENTS, READONLY, DEBUGGING
- 19 .comment      0000007b  00000000  00000000  000fa0e3  2**0
+ 19 .comment      0000007b  00000000  00000000  000fa549  2**0
                   CONTENTS, READONLY
- 20 .debug_frame  00000b48  00000000  00000000  000fa160  2**2
+ 20 .debug_frame  00000c10  00000000  00000000  000fa5c4  2**2
                   CONTENTS, READONLY, DEBUGGING
- 21 .stab         00000084  00000000  00000000  000faca8  2**2
+ 21 .stab         00000084  00000000  00000000  000fb1d4  2**2
                   CONTENTS, READONLY, DEBUGGING
- 22 .stabstr      00000117  00000000  00000000  000fad2c  2**0
+ 22 .stabstr      00000117  00000000  00000000  000fb258  2**0
                   CONTENTS, READONLY, DEBUGGING
 
 Disassembly of section .text:
@@ -670,7 +670,7 @@ void initialize_core()
  8000588:	4313      	orrs	r3, r2
  800058a:	618b      	str	r3, [r1, #24]
 			USB_OTG_GINTMSK_USBSUSPM | USB_OTG_GINTMSK_WUIM | USB_OTG_GINTMSK_IEPINT |
-			USB_OTG_GINTMSK_RXFLVLM
+			USB_OTG_GINTSTS_OEPINT | USB_OTG_GINTMSK_RXFLVLM
 	);
 
 	//Clear all pending core interrupts
@@ -695,7 +695,7 @@ void initialize_core()
  80005ac:	40023800 	.word	0x40023800
  80005b0:	40040000 	.word	0x40040000
  80005b4:	40040800 	.word	0x40040800
- 80005b8:	80043818 	.word	0x80043818
+ 80005b8:	800c3818 	.word	0x800c3818
 
 080005bc <connect>:
 

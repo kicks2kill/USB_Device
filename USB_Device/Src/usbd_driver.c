@@ -46,7 +46,7 @@ void initialize_core()
 	SET_BIT(USB_OTG_HS->GINTMSK,
 			USB_OTG_GINTMSK_USBRST | USB_OTG_GINTMSK_ENUMDNEM | USB_OTG_GINTMSK_SOFM |
 			USB_OTG_GINTMSK_USBSUSPM | USB_OTG_GINTMSK_WUIM | USB_OTG_GINTMSK_IEPINT |
-			USB_OTG_GINTMSK_RXFLVLM
+			USB_OTG_GINTSTS_OEPINT | USB_OTG_GINTMSK_RXFLVLM
 	);
 
 	//Clear all pending core interrupts
@@ -73,4 +73,57 @@ void disconnect()
 
 	//Power transceivers off
 	CLEAR_BIT(USB_OTG_HS->GCCFG, USB_OTG_GCCFG_PWRDWN);
+}
+
+static void configure_endpoint0(uint16_t endpoint_size)
+{
+	//Unmask all interrupts of IN and OUT endpoint0
+	SET_BIT(USB_OTG_HS_DEVICE->DAINTMSK, 1 << 0 | 1 << 16);
+
+	//Configure the maximum packet size, activate endpoint and NAK the endpoint
+	MODIFY_REG(IN_ENDPOINT(0)->DIEPCTL,
+			USB_OTG_DIEPCTL_MPSIZ,
+			USB_OTG_DIEPCTL_USBAEP | _VAL2FLD(USB_OTG_DIEPCTL_MPSIZ, endpoint_size) | USB_OTG_DIEPCTL_SNAK
+	);
+
+	//Clear NAK and enable endpoint data transmission
+	SET_BIT(OUT_ENDPOINT(0)->DOEPCTL,
+			USB_OTG_DOEPCTL_EPENA | USB_OTG_DOEPCTL_CNAK
+			);
+}
+
+static void usbrst_handler()
+{
+
+	for(uint8_t i = 0; i <= ENDPOINT_COUNT; i++)
+	{
+
+	}
+}
+
+void gintsts_handler()
+{
+	volatile uint32_t gintsts = USB_OTG_HS_GLOBAL->GINTSTS;
+
+	if(gintsts & USB_OTG_GINTSTS_USBRST)
+	{
+		//Clear interrupt to avoid global interrupt persistence
+		SET_BIT(USB_OTG_HS_GLOBAL->GINTSTS, USB_OTG_GINTSTS_USBRST);
+	}
+	else if (gintsts & USB_OTG_GINTSTS_ENUMDNE)
+	{
+
+	}
+	else if (gintsts & USB_OTG_GINTSTS_RXFLVL)
+	{
+
+	}
+	else if (gintsts & USB_OTG_GINTSTS_IEPINT)
+	{
+
+	}
+	else if (gintsts & USB_OTG_GINTSTS_OEPINT)
+	{
+
+	}
 }
