@@ -1,0 +1,4 @@
+usbd_driver.c:4:6:initialize_gpio_pins	4	static
+usbd_driver.c:23:6:initialize_core	4	static
+usbd_driver.c:59:6:connect	4	static
+usbd_driver.c:69:6:disconnect	4	static
