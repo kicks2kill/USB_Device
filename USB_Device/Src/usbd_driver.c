@@ -1,5 +1,5 @@
 #include "usbd_driver.h"
-
+#include "usb_standards.h"
 
 void initialize_gpio_pins()
 {
@@ -90,6 +90,55 @@ static void configure_endpoint0(uint16_t endpoint_size)
 	SET_BIT(OUT_ENDPOINT(0)->DOEPCTL,
 			USB_OTG_DOEPCTL_EPENA | USB_OTG_DOEPCTL_CNAK
 			);
+}
+
+static void configure_in_endpoint(uint8_t endpoint_number, UsbEndpointType endpoint_type, uint16_t endpoint_size)
+{
+	//Unmask all interrupts of the targeted IN endpoint
+	SET_BIT(USB_OTG_HS_DEVICE->DAINTMSK, 1 << endpoint_number);
+
+	//Activate endpoint and set endpoint handshake to NAK.
+	MODIFY_REG(IN_ENDPOINT(endpoint_number)->DIEPCTL,
+		USB_OTG_DIEPCTL_MPSIZ | USB_OTG_DIEPCTL_EPTYP,
+		USB_OTG_DIEPCTL_USBAEP | _VAL2FLD(USB_OTG_DIEPCTL_MPSIZ, endpoint_size) | USB_OTG_DIEPCTL_SNAK |
+		_VAL2FLD(USB_OTG_DIEPCTL_EPTYP, endpoint_type) | USB_OTG_DIEPCTL_SD0PID_SEVNFRM
+	);
+}
+
+static void deconfigure_endpoint(uint8_t endpoint_number)
+{
+	USB_OTG_INEndpointTypeDef *in_endpoint = IN_ENDPOINT(endpoint_number);
+	USB_OTG_OUTEndpointTypeDef *out_endpoint = OUT_ENDPOINT(endpoint_number);
+
+	//masks all interrupts of targeted in and out endpoints
+	CLEAR_BIT(USB_OTG_HS_DEVICE->DAINTMSK,
+			(1 << endpoint_number) | (1 << 16 << endpoint_number)
+	);
+
+	//Clears all interrupts of the endpoint
+	SET_BIT(in_endpoint->DIEPINT, 0x29FF);
+	SET_BIT(out_endpoint->DOEPINT, 0x71FF);
+
+	//disable endpoints if possible
+	if(in_endpoint->DIEPCTL & USB_OTG_DIEPCTL_EPENA)
+	{
+		SET_BIT(in_endpoint->DIEPCTL, USB_OTG_DIEPCTL_EPDIS);
+	}
+
+	//deactivate endpoint
+	CLEAR_BIT(in_endpoint->DIEPCTL, USB_OTG_DIEPCTL_USBAEP);
+
+	if(endpoint_number != 0) //0 endpoint must be active/enabled.
+	{
+		if(out_endpoint->DOEPCTL & USB_OTG_DOEPCTL_EPENA)
+		{
+			//Disable endpoint transmission
+			SET_BIT(out_endpoint->DOEPCTL, USB_OTG_DOEPCTL_EPDIS);
+		}
+
+		//deactivate the endpoint
+		CLEAR_BIT(out_endpoint->DOEPCTL, USB_OTG_DOEPCTL_USBAEP);
+	}
 }
 
 static void usbrst_handler()

@@ -27,27 +27,27 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   ALLOC
  11 .ARM.attributes 00000030  00000000  00000000  00020068  2**0
                   CONTENTS, READONLY
- 12 .debug_info   00001d63  00000000  00000000  00020098  2**0
+ 12 .debug_info   00001e14  00000000  00000000  00020098  2**0
                   CONTENTS, READONLY, DEBUGGING
- 13 .debug_abbrev 000006d7  00000000  00000000  00021dfb  2**0
+ 13 .debug_abbrev 0000070b  00000000  00000000  00021eac  2**0
                   CONTENTS, READONLY, DEBUGGING
- 14 .debug_aranges 00000150  00000000  00000000  000224d8  2**3
+ 14 .debug_aranges 00000160  00000000  00000000  000225b8  2**3
                   CONTENTS, READONLY, DEBUGGING
- 15 .debug_ranges 000000f8  00000000  00000000  00022628  2**3
+ 15 .debug_ranges 00000108  00000000  00000000  00022718  2**3
                   CONTENTS, READONLY, DEBUGGING
- 16 .debug_macro  00021298  00000000  00000000  00022720  2**0
+ 16 .debug_macro  000212a2  00000000  00000000  00022820  2**0
                   CONTENTS, READONLY, DEBUGGING
- 17 .debug_line   00001bc2  00000000  00000000  000439b8  2**0
+ 17 .debug_line   00001c0a  00000000  00000000  00043ac2  2**0
                   CONTENTS, READONLY, DEBUGGING
- 18 .debug_str    000b4fcf  00000000  00000000  0004557a  2**0
+ 18 .debug_str    000b50a2  00000000  00000000  000456cc  2**0
                   CONTENTS, READONLY, DEBUGGING
- 19 .comment      0000007b  00000000  00000000  000fa549  2**0
+ 19 .comment      0000007b  00000000  00000000  000fa76e  2**0
                   CONTENTS, READONLY
- 20 .debug_frame  00000c10  00000000  00000000  000fa5c4  2**2
+ 20 .debug_frame  00000c5c  00000000  00000000  000fa7ec  2**2
                   CONTENTS, READONLY, DEBUGGING
- 21 .stab         00000084  00000000  00000000  000fb1d4  2**2
+ 21 .stab         00000084  00000000  00000000  000fb448  2**2
                   CONTENTS, READONLY, DEBUGGING
- 22 .stabstr      00000117  00000000  00000000  000fb258  2**0
+ 22 .stabstr      00000117  00000000  00000000  000fb4cc  2**0
                   CONTENTS, READONLY, DEBUGGING
 
 Disassembly of section .text:
@@ -566,7 +566,7 @@ void SystemInit(void)
 
 080004fc <initialize_gpio_pins>:
 #include "usbd_driver.h"
-
+#include "usb_standards.h"
 
 void initialize_gpio_pins()
 {

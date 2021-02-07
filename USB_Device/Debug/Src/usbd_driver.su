@@ -5,5 +5,7 @@ usbd_driver.c:23:6:initialize_core	4	static
 usbd_driver.c:59:6:connect	4	static
 usbd_driver.c:69:6:disconnect	4	static
 usbd_driver.c:78:13:configure_endpoint0	24	static
-usbd_driver.c:95:13:usbrst_handler	16	static
-usbd_driver.c:104:6:gintsts_handler	16	static
+usbd_driver.c:95:13:configure_in_endpoint	24	static
+usbd_driver.c:108:13:deconfigure_endpoint	24	static
+usbd_driver.c:146:13:usbrst_handler	16	static
+usbd_driver.c:155:6:gintsts_handler	16	static
