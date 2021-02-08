@@ -255,6 +255,45 @@ static void usbrst_handler()
 	}
 }
 
+static void enumdne_handler()
+{
+	log_info("USB device speed enumeration done");
+	configure_endpoint0(8);
+}
+
+static void rxflvl_handler()
+{
+	//Pop the status information word from RxFIFO
+	uint32_t receive_status = USBN_OTG_HS_GLOBAL->GRXSTSP;
+
+	//endpoint that receives the data
+	uint8_t endpoint_number = _FLD2VAL(USB_OTG_GRXSTSP_EPNUM, receive_status);
+	//count of bytes in received packet
+	uint16_t bcnt = _FLD2VAL(USB_OTG_GRXSTSP_BCNT, receive_status);
+	//status of received packet
+	uint16_t pktsts = _FLD2VAL(USB_OTG_GRXSTSP_PKTSTS, receive_status);
+
+	switch(pktsts)
+	{
+	case 0x06: //SETUP packet (includes data)
+		break;
+	case 0x02: //OUT packet
+		break;
+	case 0x04: //SETUP stage has completed
+		//re-enable the transmission on the endpoint
+		SET_BIT(OUT_ENDPOINT(endpoint_number)->DOEPCTL,
+				USB_OTG_DOEPCTL_CNAK | USB_OTG_DOEPCTL_EPENA
+		);
+		break;
+	case 0x03: //OUT transfer has completed
+		SET_BIT(OUT_ENDPOINT(endpoint_number)->DOEPCTL,
+				USB_OTG_DOEPCTL_CNAK | USB_OTG_DOEPCTL_EPENA
+		);
+		break;
+	}
+
+}
+
 void gintsts_handler()
 {
 	volatile uint32_t gintsts = USB_OTG_HS_GLOBAL->GINTSTS;
@@ -267,10 +306,15 @@ void gintsts_handler()
 	}
 	else if (gintsts & USB_OTG_GINTSTS_ENUMDNE)
 	{
-
+		enumdne_handler();
+		//Clear interrupt after handling
+		SET_BIT(USB_OTG_HS_GLOBAL->GINTSTS, USB_OTG_GINTSTS_ENUMDNE);
 	}
-	else if (gintsts & USB_OTG_GINTSTS_RXFLVL)
+	else if (gintsts & USB_OTG_GINTSTS_RXFLVL) //interrupt occurs when RxFIFO data is not empty
 	{
+		rxflvl_handler();
+		//clear interrupt after handling
+		SET_BIT(USB_OTG_HS_GLOBAL->GINTSTS, USB_OTG_GINTSTS_RXFLVL);
 
 	}
 	else if (gintsts & USB_OTG_GINTSTS_IEPINT)
