@@ -18,6 +18,10 @@ inline static USB_OTG_OUTEndpointTypeDef * OUT_ENDPOINT(uint8_t endpoint_number)
 	return (USB_OTG_OUTEndpointTypeDef *)(USB_OTG_HS_PERIPH_BASE + USB_OTG_OUT_ENDPOINT_BASE + (endpoint_number *0x20));
 }
 
+inline static volatile uint32_t *FIFO(uint8_t endpoint_number)
+{
+	return (volatile uint32_t *)(USB_OTG_HS_PERIPH_BASE + USB_OTG_FIFO_BASE + (endpoint_number * 0x1000));
+}
 
 //IN and OUT
 #define ENDPOINT_COUNT 6

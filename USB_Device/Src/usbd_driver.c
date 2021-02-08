@@ -54,6 +54,10 @@ void initialize_core()
 
 	//Unmasks USB global interrupt
 	SET_BIT(USB_OTG_HS->GAHBCFG, USB_OTG_GAHBCFG_GINT);
+
+	//Unmasks transfer completed interrupt for all endpoints
+	SET_BIT(USB_OTG_HS_DEVICE->DOEPMSK, USB_OTG_DOEPMSK_XFRCM);
+	SET_BIT(USB_OTG_HS_DEVICE->DIEPMSK, USB_OTG_DOEPMSK_XFRCM);
 }
 
 void connect()
@@ -75,6 +79,94 @@ void disconnect()
 	CLEAR_BIT(USB_OTG_HS->GCCFG, USB_OTG_GCCFG_PWRDWN);
 }
 
+//Update the start addresses of all FIFOs according to size of each FIFO
+static void refresh_fifo_start_addresses()
+{
+	//First changeable start address begins after the region of RxFIFO
+	uint16_t start_addr = _FLD2VAL(USB_OTG_GRXFSIZ_RXFD, USB_OTG_HS->GRXFSIZ) * 4; //must be aligned with a 32-bit location/word
+
+	//Update the start of TxFIFO0
+	MODIFY_REG(USB_OTG_HS->DIEPTXF0_HNPTXFSIZ,
+			USB_OTG_TX0FSA,
+			_VAL2FLD(USB_OTG_TX0FSA, start_addr)
+	);
+
+	//Next start address is after where the last TxFIFO ends
+	start_addr += _FLD2VAL(USB_OTG_TX0FD, USB_OTG_HS->DIEPTXF0_HNPTXFSIZ) * 4; //must be aligned with a 32-bit location/word
+
+	//update the start address of the remaining TxFIFO
+	for (uint8_t txfifo_number = 0; txfifo_number < ENDPOINT_COUNT -1; txfifo_number++)
+	{
+		MODIFY_REG(USB_OTG_HS->DIEPTXF[txfifo_number],
+				USB_OTG_NPTXFSA,
+				_VAL2FLD(USB_OTG_NPTXFSA, start_addr)
+		);
+
+		start_addr += _FLD2VAL(USB_OTG_NPTXFD, USB_OTG_HS->DIEPTXF[txfifo_number]) * 4;
+	}
+}
+
+
+//Configure RxFIFO of all OUT endpoints, size of largest OUT endpoints in bytes.
+//Shared between all OUT endpoints
+static void configure_rxfifo_size(uint16_t size)
+{
+	//Consider the space required to save status packets in RxFIFO and get size in term of 32-bit words.
+	size = 10 + (2 * ((size / 4) + 1));
+
+	MODIFY_REG(USB_OTG_HS->GRXFSIZ,
+		USB_OTG_GRXFSIZ_RXFD,
+		_VAL2FLD(USB_OTG_GRXFSIZ_RXFD, size)
+	);
+
+	refresh_fifo_start_addresses();
+}
+
+//Configure TxFIFO of all IN endpoints, the size of IN endpoint in bytes
+//Any change on any FIFO will update the registers of all TxFIFOs to adapt the start offsets
+static void configure_txfifo_size(uint8_t endpoint_number, uint16_t size)
+{
+	//Get FIFO size in term of 32-bit words
+	size = (size + 3) / 4;
+
+	//configure the depth of the TxFIFO
+	if(endpoint_number == 0)
+	{
+		MODIFY_REG(USB_OTG_HS->DIEPTXF0_HNPTXFSIZ,
+				USB_OTG_TX0FD,
+				_VAL2FLD(USB_OTG_TX0FD,size)
+		);
+	}
+	else
+	{
+		MODIFY_REG(USB_OTG_HS->DIEPTXF[endpoint_number - 1],
+				USB_OTG_NPTXFD,
+				_VAL2FLD(USB_OTG_NPTXFD, size)
+		);
+
+	}
+	refresh_fifo_start_addresses();
+}
+
+
+//Flush the RxFIFO of all OUT endpoints
+static void flush_rxfifo()
+{
+	SET_BIT(USB_OTG_HS->GRSTCTL, USB_OTG_GRSTCTL_RXFFLSH);
+}
+
+
+//flush the TxFIFO of an IN endpoint
+static void flush_txfifo(uint8_t endpoint_number)
+{
+	//Sets the number of TxFIFO to be flushed and then triggers the flush
+	MODIFY_REG(USB_OTG_HS->GRSTCTL,
+			USB_OTG_GRSTCTL_TXFNUM,
+			_VAL2FLD(USB_OTG_GRSTCTL_TXFNUM, endpoint_number) | USB_OTG_GRSTCTL_TXFFLSH
+	);
+}
+
+
 static void configure_endpoint0(uint16_t endpoint_size)
 {
 	//Unmask all interrupts of IN and OUT endpoint0
@@ -90,6 +182,10 @@ static void configure_endpoint0(uint16_t endpoint_size)
 	SET_BIT(OUT_ENDPOINT(0)->DOEPCTL,
 			USB_OTG_DOEPCTL_EPENA | USB_OTG_DOEPCTL_CNAK
 			);
+
+	//Note: 64 bytes is the maximum packet size for full speed USB devices
+	configure_rxfifo_size(64);
+	configure_txfifo_size(0, endpoint_size);
 }
 
 static void configure_in_endpoint(uint8_t endpoint_number, UsbEndpointType endpoint_type, uint16_t endpoint_size)
@@ -101,8 +197,10 @@ static void configure_in_endpoint(uint8_t endpoint_number, UsbEndpointType endpo
 	MODIFY_REG(IN_ENDPOINT(endpoint_number)->DIEPCTL,
 		USB_OTG_DIEPCTL_MPSIZ | USB_OTG_DIEPCTL_EPTYP,
 		USB_OTG_DIEPCTL_USBAEP | _VAL2FLD(USB_OTG_DIEPCTL_MPSIZ, endpoint_size) | USB_OTG_DIEPCTL_SNAK |
-		_VAL2FLD(USB_OTG_DIEPCTL_EPTYP, endpoint_type) | USB_OTG_DIEPCTL_SD0PID_SEVNFRM
+		_VAL2FLD(USB_OTG_DIEPCTL_EPTYP, endpoint_type) | _VAL2FLD(USB_OTG_DIEPCTL_TXFNUM, endpoint_number) | USB_OTG_DIEPCTL_SD0PID_SEVNFRM
 	);
+
+	configure_txfifo_size(endpoint_number, endpoint_size);
 }
 
 static void deconfigure_endpoint(uint8_t endpoint_number)
@@ -139,14 +237,21 @@ static void deconfigure_endpoint(uint8_t endpoint_number)
 		//deactivate the endpoint
 		CLEAR_BIT(out_endpoint->DOEPCTL, USB_OTG_DOEPCTL_USBAEP);
 	}
+
+	//Flush the FIFOs
+	flush_txfifo(endpoint_number);
+	flush_rxfifo();
 }
+
+
+
 
 static void usbrst_handler()
 {
-
+	log_info("USB reset singal was detected");
 	for(uint8_t i = 0; i <= ENDPOINT_COUNT; i++)
 	{
-
+		deconfigure_endpoint(i);
 	}
 }
 
@@ -156,6 +261,7 @@ void gintsts_handler()
 
 	if(gintsts & USB_OTG_GINTSTS_USBRST)
 	{
+		ubrst_handler();
 		//Clear interrupt to avoid global interrupt persistence
 		SET_BIT(USB_OTG_HS_GLOBAL->GINTSTS, USB_OTG_GINTSTS_USBRST);
 	}
