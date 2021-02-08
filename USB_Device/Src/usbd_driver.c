@@ -1,7 +1,9 @@
 #include "usbd_driver.h"
 #include "usb_standards.h"
 
-void initialize_gpio_pins()
+//These functions in the driver should not be called, except from the framework.
+
+static void initialize_gpio_pins()
 {
 	//Enable clock for GPIOB
 	SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_GPIOBEN);
@@ -20,7 +22,7 @@ void initialize_gpio_pins()
 
 }
 
-void initialize_core()
+static void initialize_core()
 {
 	//Enable the clock for USB core
 	SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_OTGHSEN);
@@ -60,7 +62,7 @@ void initialize_core()
 	SET_BIT(USB_OTG_HS_DEVICE->DIEPMSK, USB_OTG_DOEPMSK_XFRCM);
 }
 
-void connect()
+static void connect()
 {
 	//Power the transceivers on
 	SET_BIT(USB_OTG_HS->GCCFG, USB_OTG_GCCFG_PWRDWN);
@@ -70,13 +72,69 @@ void connect()
 }
 
 
-void disconnect()
+static void disconnect()
 {
 	//Disconnect device from bus
 	SET_BIT(USB_OTG_HS_DEVICE->DCTL, USB_OTG_DCTL_SDIS);
 
 	//Power transceivers off
 	CLEAR_BIT(USB_OTG_HS->GCCFG, USB_OTG_GCCFG_PWRDWN);
+}
+
+
+//Pops data from the RxFIFO and stores it in the buffer
+//buffer is pointer to the buffer in which the popped data will be stored
+static void read_packet(void *buffer, uint16_t size)
+{
+	//Note: there is only one RxFIFO
+	uint32_t *fifo = FIFO(0); //popped data would be lost if not stored
+
+	for(; size >= 4; size -=4, buffer += 4) //shift buffer by 4, otherwise data will be lost each cycle (FIFO structure uses 32-bit words)
+	{
+		//pops one 32-bit word of data (until there is less than one word remaining)
+		uint32_t data = *fifo;
+		//store data in buffer, dereference the buffer pointer
+		*((uint32_t*)buffer) = data;
+	}
+	if(size > 0)
+	{
+		//pops remaining last bytes (less than a word)
+		uint32_t data = *fifo;
+
+		for(; size > 0; size--, buffer++, data>>= 8)
+		{
+			//store data in the buffer with correct alignment
+			*((uint8_t*)buffer) = 0xFF & data;
+		}
+	}
+}
+
+
+static void write_packet(uint8_t endpoint_number, void const *buffer, uint16_t size)
+{
+	uint32_t *fifo = FIFO(endpoint_number);
+	USB_OTG_INEndpointTypeDef *in_endpoint = IN_ENDPOINT(endpoint_number);
+
+	//configure the transmission (1 packet that has size bytes)
+	MODIFY_REG(in_endpoint->DIEPTSIZ,
+			USB_OTG_DIEPTSIZ_PKTCNT | USB_OTG_DIEPTSIZ_XFRSIZ,
+			_VAL2FLD(USB_OTG_DIEPTSIZ_PKTCNT, 1) | _VAL2FLD(USB_OTG_DIEPTSIZ_XFRSIZ, size)
+	);
+
+	//enable the transmission after clearing both STALL and NAK of the endpoint
+	MODIFY_REG(in_endpoint->DIEPCTL,
+			USB_OTG_DIEPCTL_STALL,
+			USB_OTG_DOEPCTL_CNAK | USB_OTG_DOEPCTL_EPENA
+	);
+
+	//get the size in terms of 32-bit words
+	size = (size + 3) / 4;
+
+	for(; size > 0; size--, buffer += 4)
+	{
+		//pushes data to the TxFIFO
+		*fifo = *((uint32_t *)buffer);
+	}
 }
 
 //Update the start addresses of all FIFOs according to size of each FIFO
@@ -264,7 +322,7 @@ static void enumdne_handler()
 static void rxflvl_handler()
 {
 	//Pop the status information word from RxFIFO
-	uint32_t receive_status = USBN_OTG_HS_GLOBAL->GRXSTSP;
+	uint32_t receive_status = USB_OTG_HS_GLOBAL->GRXSTSP;
 
 	//endpoint that receives the data
 	uint8_t endpoint_number = _FLD2VAL(USB_OTG_GRXSTSP_EPNUM, receive_status);
@@ -294,7 +352,7 @@ static void rxflvl_handler()
 
 }
 
-void gintsts_handler()
+static void gintsts_handler()
 {
 	volatile uint32_t gintsts = USB_OTG_HS_GLOBAL->GINTSTS;
 
@@ -326,3 +384,17 @@ void gintsts_handler()
 
 	}
 }
+
+//function pointers
+const UsbDriver usb_driver = {
+		.initialize_core = &initialize_core,
+		.initialize_gpio_pins = &initialize_gpio_pins,
+		.connect = &connect,
+		.disconnect = &disconnect,
+		.flush_rxfifo = &flush_rxfifo,
+		.flush_txfifo = &flush_txfifo,
+		.configure_in_endpoint = &configure_in_endpoint,
+		.read_packet = &read_packet,
+		.write_packet = &write_packet
+
+};

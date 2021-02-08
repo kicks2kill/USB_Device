@@ -1,1 +1,1 @@
-usbd_framework.c:3:6:usbd_initialize	8	static
+usbd_framework.c:3:6:usbd_initialize	4	static
