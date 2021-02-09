@@ -310,8 +310,34 @@ static void deconfigure_endpoint(uint8_t endpoint_number)
 	flush_rxfifo();
 }
 
+//Handles the interrupt raised when an IN endpoint has a raised interrupt
+static void iepint_handler()
+{
+	//find the endpoint caused the interrupt
+	uint8_t endpoint_number = ffs(USB_OTG_HS_DEVICE->DAINT) - 1; //ffs returns by 1, instead of by 0 index.
 
+	if( IN_ENDPOINT(endpoint_number)->DIEPINT & USB_OTG_DIEPINT_XFRC)
+	{
+		usb_events.on_in_transfer_completed(endpoint_number);
 
+		//Clear interrupt flag
+		SET_BIT(IN_ENDPOINT(endpoint_number)->DIEPINT, USB_OTG_DIEPINT_XFRC);
+	}
+}
+
+static void oepint_handler()
+{
+	//find the endpoint caused the interrupt
+		uint8_t endpoint_number = ffs(USB_OTG_HS_DEVICE->DAINT >> 16) - 1; //ffs returns by 1, instead of by 0 index.
+
+		if( OUT_ENDPOINT(endpoint_number)->DOEPINT & USB_OTG_DOEPINT_XFRC)
+		{
+			usb_events.on_out_transfer_completed(endpoint_number);
+
+			//Clear interrupt flag
+			SET_BIT(OUT_ENDPOINT(endpoint_number)->DOEPINT, USB_OTG_DOEPINT_XFRC);
+		}
+}
 
 static void usbrst_handler()
 {
@@ -389,11 +415,13 @@ static void gintsts_handler()
 	}
 	else if (gintsts & USB_OTG_GINTSTS_IEPINT)
 	{
-
+		iepint_handler();
+		SET_BIT(USB_OTG_HS_GLOBAL->GINTSTS, USB_OTG_GINTSTS_IEPINT);
 	}
 	else if (gintsts & USB_OTG_GINTSTS_OEPINT)
 	{
-
+		oepint_handler();
+		SET_BIT(USB_OTG_HS_GLOBAL->GINTSTS, USB_OTG_GINTSTS_OEPINT);
 	}
 	usb_events.on_usb_polled();
 }

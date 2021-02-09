@@ -1,6 +1,6 @@
-usbd_driver.h:11:43:IN_ENDPOINT	16	static
-usbd_driver.h:17:44:OUT_ENDPOINT	16	static
-usbd_driver.h:22:34:FIFO	16	static
+usbd_driver.h:12:43:IN_ENDPOINT	16	static
+usbd_driver.h:18:44:OUT_ENDPOINT	16	static
+usbd_driver.h:23:34:FIFO	16	static
 usbd_driver.c:6:13:initialize_gpio_pins	4	static
 usbd_driver.c:25:13:initialize_core	4	static
 usbd_driver.c:65:13:connect	4	static
@@ -16,7 +16,9 @@ usbd_driver.c:227:13:flush_txfifo	16	static
 usbd_driver.c:237:13:configure_endpoint0	24	static
 usbd_driver.c:258:13:configure_in_endpoint	24	static
 usbd_driver.c:273:13:deconfigure_endpoint	24	static
-usbd_driver.c:316:13:usbrst_handler	16	static
-usbd_driver.c:327:13:enumdne_handler	8	static
-usbd_driver.c:333:13:rxflvl_handler	24	static
-usbd_driver.c:367:13:gintsts_handler	16	static
+usbd_driver.c:314:13:iepint_handler	16	static
+usbd_driver.c:328:13:oepint_handler	16	static
+usbd_driver.c:342:13:usbrst_handler	16	static
+usbd_driver.c:353:13:enumdne_handler	8	static
+usbd_driver.c:359:13:rxflvl_handler	24	static
+usbd_driver.c:393:13:gintsts_handler	16	static

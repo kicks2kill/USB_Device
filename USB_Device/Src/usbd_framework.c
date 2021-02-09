@@ -1,9 +1,11 @@
+#include "stddef.h"
 #include "usbd_framework.h"
 #include "usbd_driver.h"
 #include "usb_device.h"
 #include "usb_standards.h"
 #include "Helpers/logger.h"
 #include "usbd_descriptors.h"
+#include "Helpers/math.h"
 
 static UsbDevice *usbd_handle;
 
@@ -60,15 +62,35 @@ static void process_control_transfer_stage()
 			break;
 		case USB_CONTROL_STAGE_DATA_IN:
 			log_info("Processing IN-DATA stage");
-			uint8_t data_size = device_descriptor.bMaxPacketSize0;
+			uint8_t data_size = MIN(usbd_handle->in_data_size, device_descriptor.bMaxPacketSize0);
 			usb_driver.write_packet(0, usbd_handle->ptr_in_buffer, data_size);
 
 			usbd_handle->in_data_size -= data_size;
 			usbd_handle->ptr_in_buffer += data_size;
 
+			log_info("Switching control stage to IN-DATA IDLE");
 			usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_DATA_IN_IDLE;
+
+			if(!usbd_handle->in_data_size) //if data equals 0
+			{
+				if(data_size == device_descriptor.bMaxPacketSize0) //if the data size equals our packet size
+				{
+					log_info("Switching control stage to IN-DATA ZERO");
+					usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_DATA_IN_ZERO;
+				}
+				else	//transfer control to OUT endpoint
+				{
+					log_info("Switching control stage to OUT-DATA");
+					usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_DATA_OUT;
+				}
+			}
+
 			break;
 		case USB_CONTROL_STAGE_DATA_IN_IDLE:
+			break;
+		case USB_CONTROL_STAGE_STATUS_OUT:
+			log_info("Switching control stage to SETUP");
+			usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_SETUP;
 			break;
 	}
 }
@@ -76,6 +98,22 @@ static void process_control_transfer_stage()
 static void usb_polled_handler()
 {
 	process_control_transfer_stage();
+}
+
+static void in_transfer_completed_handler(uint8_t endpoint_number)
+{
+	if(usbd_handle->in_data_size)
+	{
+		log_info("Switching control stage to IN-DATA");
+		usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_DATA_IN;
+	}
+	else if(usbd_handle->control_transfer_stage == USB_CONTROL_STAGE_DATA_IN_ZERO)
+	{
+		usb_driver.write_packet(0, NULL, 0);
+		//can switch transfer stage now that 0 data is being sent
+		log_info("Switching control stage to OUT-STATUS");
+		usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_STATUS_OUT;
+	}
 }
 
 void usbd_poll()
@@ -107,6 +145,7 @@ static void setup_data_received_handler(uint8_t endpoint_number, uint16_t byte_c
 UsbEvents usb_events = {
 		.on_usb_reset_received = &usbrst_handler,
 		.on_setup_data_received = &setup_data_received_handler,
-		.on_usb_polled = &usb_polled_handler
+		.on_usb_polled = &usb_polled_handler,
+		.on_in_transfer_completed = &in_transfer_completed_handler
 		//TODO
 };
