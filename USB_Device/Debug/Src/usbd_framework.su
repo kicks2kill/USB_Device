@@ -1,4 +1,8 @@
-usbd_framework.c:7:6:usbd_initialize	16	static
-usbd_framework.c:15:6:usbd_poll	8	static
-usbd_framework.c:20:13:usbrst_handler	8	static
-usbd_framework.c:31:13:setup_data_received_handler	16	static
+usbd_framework.c:10:6:usbd_initialize	16	static
+usbd_framework.c:18:13:process_standard_device_request	16	static
+usbd_framework.c:42:13:process_request	16	static
+usbd_framework.c:55:13:process_control_transfer_stage	16	static
+usbd_framework.c:76:13:usb_polled_handler	8	static
+usbd_framework.c:81:6:usbd_poll	8	static
+usbd_framework.c:86:13:usbrst_handler	8	static
+usbd_framework.c:97:13:setup_data_received_handler	16	static

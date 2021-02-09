@@ -6,7 +6,7 @@ typedef struct
 	//the current USB device state
 	UsbDeviceState device_state;
 	//Current control transfer stage for endpoint0
-	UsbControlTransferStage control_transfer_state;
+	UsbControlTransferStage control_transfer_stage;
 	//the selected USB config
 	uint8_t configuration_value;
 

@@ -395,6 +395,7 @@ static void gintsts_handler()
 	{
 
 	}
+	usb_events.on_usb_polled();
 }
 
 //function pointers
