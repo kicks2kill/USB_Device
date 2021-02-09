@@ -1,1 +1,4 @@
-usbd_framework.c:3:6:usbd_initialize	4	static
+usbd_framework.c:7:6:usbd_initialize	16	static
+usbd_framework.c:15:6:usbd_poll	8	static
+usbd_framework.c:20:13:usbrst_handler	8	static
+usbd_framework.c:31:13:setup_data_received_handler	16	static

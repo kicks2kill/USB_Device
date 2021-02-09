@@ -1,5 +1,5 @@
 #include "usbd_driver.h"
-#include "usb_standards.h"
+
 
 //These functions in the driver should not be called, except from the framework.
 
@@ -81,6 +81,15 @@ static void disconnect()
 	CLEAR_BIT(USB_OTG_HS->GCCFG, USB_OTG_GCCFG_PWRDWN);
 }
 
+
+static void set_device_address(uint8_t addr)
+{
+	MODIFY_REG(
+			USB_OTG_HS_DEVICE->DCFG,
+			USB_OTG_DCFG_DAD,
+			_VAL2FLD(USB_OTG_DCFG_DAD, addr)
+	);
+}
 
 //Pops data from the RxFIFO and stores it in the buffer
 //buffer is pointer to the buffer in which the popped data will be stored
@@ -311,6 +320,8 @@ static void usbrst_handler()
 	{
 		deconfigure_endpoint(i);
 	}
+
+	usb_events.on_usb_reset_received();
 }
 
 static void enumdne_handler()
@@ -334,6 +345,7 @@ static void rxflvl_handler()
 	switch(pktsts)
 	{
 	case 0x06: //SETUP packet (includes data)
+		usb_events.on_setup_data_received(endpoint_number, bcnt);
 		break;
 	case 0x02: //OUT packet
 		break;
@@ -358,7 +370,7 @@ static void gintsts_handler()
 
 	if(gintsts & USB_OTG_GINTSTS_USBRST)
 	{
-		ubrst_handler();
+		usbrst_handler();
 		//Clear interrupt to avoid global interrupt persistence
 		SET_BIT(USB_OTG_HS_GLOBAL->GINTSTS, USB_OTG_GINTSTS_USBRST);
 	}
@@ -389,12 +401,14 @@ static void gintsts_handler()
 const UsbDriver usb_driver = {
 		.initialize_core = &initialize_core,
 		.initialize_gpio_pins = &initialize_gpio_pins,
+		.set_device_address = &set_device_address,
 		.connect = &connect,
 		.disconnect = &disconnect,
 		.flush_rxfifo = &flush_rxfifo,
 		.flush_txfifo = &flush_txfifo,
 		.configure_in_endpoint = &configure_in_endpoint,
 		.read_packet = &read_packet,
-		.write_packet = &write_packet
+		.write_packet = &write_packet,
+		.poll = &gintsts_handler
 
 };

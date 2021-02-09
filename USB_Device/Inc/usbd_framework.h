@@ -4,5 +4,6 @@
 
 
 void usbd_initialize();
+void usbd_poll();
 
 #endif
