@@ -1,5 +1,8 @@
 #ifndef USB_STANDARDS_H_
 #define USB_STANDARDS_H_
+#include "HID/usb_hid_standards.h"
+#include "HID/usb_hid_usage_button.h"
+#include "HID/usb_hid_usage_desktop.h"
 
 typedef enum UsbEndpointType
 {
@@ -47,6 +50,65 @@ typedef struct {
 	uint16_t wIndex;		// Parameter passed to the device
 	uint16_t wLength;		// Count of bytes that will be transmitted in the data stage
 } UsbRequest;
+
+
+typedef struct {
+	uint8_t 	bLength;			//size of descriptor in bytes
+	uint8_t		bDescriptorType;	//descriptor type - device descriptor
+	uint8_t 	bDeviceClass;		// usb device class
+	uint8_t		bDeviceSubClass;
+	uint8_t		bDeviceProtocol;
+	uint8_t		bMaxPacketSize0;
+	uint8_t		bNumConfigurations;
+	uint16_t 	bcdUSB;				//USB specification release number
+	uint16_t	bcdDevice;			//device release number
+	uint8_t		iManufacturer;
+	uint8_t		iProduct;
+	uint8_t		iSerialNumber;
+	uint16_t	idVendor;
+	uint16_t	idProduct;
+} UsbStandardDeviceDescriptor;
+
+// Needed for USB device configuration descriptor
+typedef struct {
+	uint8_t		bLength;
+	uint8_t		bDescriptorType;
+	uint16_t	wTotalLength;
+	uint8_t		bNumInterfaces;
+	uint8_t		bConfigurationValue;
+	uint8_t		iConfiguration;
+	uint8_t		bmAttributes;
+	uint8_t		bMaxPower;
+
+} UsbConfigurationDescriptor;
+
+typedef struct {
+	uint8_t		bLength;
+	uint8_t		bDescriptorType;
+	uint8_t		bInterfaceNumber;
+	uint8_t		bAlternateSetting;
+	uint8_t		bNumEndpoints;
+	uint8_t		bInterfaceClass;
+	uint8_t		bInterfaceSubClass;
+	uint8_t		bInterfaceProtocol;
+	uint8_t		iInterface;
+} UsbInterfaceDescriptor;
+
+typedef struct {
+	uint8_t		bLength;
+	uint8_t		bDescriptorType;
+	uint8_t		bEndpointAddress;
+	uint8_t		bmAttributes;
+	uint16_t	wMaxPacketSize;
+	uint8_t		bInterval;
+} UsbEndpointDescriptor;
+
+//USB_ENDPOINT_BMATTRIBUTES_TYPE
+#define USB_ENDPOINT_TYPE_CONTROL			0x00
+#define USB_ENDPOINT_TYPE_ISOCHRONOUS		0x01
+#define USB_ENDPOINT_TYPE_BULK				0x02
+#define USB_ENDPOINT_TYPE_INTERRUPT			0x03
+
 
 //UsbDeviceBitMappedRequestTypeFields
 #define USB_BM_REQUEST_TYPE_DIRECTION_MASK (1 << 7)
@@ -111,6 +173,7 @@ typedef struct {
 #define USB_CLASS_IAD						0xEF
 #define USB_CLASS_APP_SPEC					0xFE
 #define USB_CLASS_VENDOR					0xFF
+#define USB_CLASS_HID						0x03
 
 #define USB_SUBCLASS_NONE 					0x00
 #define USB_SUBCLASS_IAD					0x02
@@ -119,23 +182,6 @@ typedef struct {
 #define USB_PROTOCOL_NONE					0x00
 #define USB_PROTOCOL_IAD					0x01
 #define USB_PROTOCOL_VENDOR					0xFF
-
-typedef struct {
-	uint8_t 	bLength;			//size of descriptor in bytes
-	uint8_t		bDescriptorType;	//descriptor type - device descriptor
-	uint8_t 	bDeviceClass;		// usb device class
-	uint8_t		bDeviceSubClass;
-	uint8_t		bDeviceProtocol;
-	uint8_t		bMaxPacketSize0;
-	uint8_t		bNumConfigurations;
-	uint16_t 	bcdUSB;				//USB specification release number
-	uint16_t	bcdDevice;			//device release number
-	uint8_t		iManufacturer;
-	uint8_t		iProduct;
-	uint8_t		iSerialNumber;
-	uint16_t	idVendor;
-	uint16_t	idProduct;
-} UsbStandardDeviceDescriptor;
 
 
 #endif

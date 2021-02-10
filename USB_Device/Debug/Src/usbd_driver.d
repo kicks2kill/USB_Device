@@ -7,7 +7,10 @@ Src/usbd_driver.o: ../Src/usbd_driver.c ../Inc/usbd_driver.h \
  /home/x_orin1/STM32CubeIDE/workspace_1.5.1/USB_Device/Inc/CMSIS/Include/cmsis_gcc.h \
  /home/x_orin1/STM32CubeIDE/workspace_1.5.1/USB_Device/Inc/CMSIS/Include/mpu_armv7.h \
  /home/x_orin1/STM32CubeIDE/workspace_1.5.1/USB_Device/Inc/CMSIS/Device/ST/STM32F4xx/Include/system_stm32f4xx.h \
- ../Inc/usb_standards.h
+ ../Inc/usb_standards.h ../Inc/HID/usb_hid_standards.h \
+ ../Inc/HID/usb_hid.h ../Inc/HID/usb_hid_usage_button.h \
+ ../Inc/HID/usb_hid_usage_desktop.h ../Inc/HID/usb_hid_usage_button.h \
+ ../Inc/HID/usb_hid_usage_desktop.h
 
 ../Inc/usbd_driver.h:
 
@@ -28,3 +31,15 @@ Src/usbd_driver.o: ../Src/usbd_driver.c ../Inc/usbd_driver.h \
 /home/x_orin1/STM32CubeIDE/workspace_1.5.1/USB_Device/Inc/CMSIS/Device/ST/STM32F4xx/Include/system_stm32f4xx.h:
 
 ../Inc/usb_standards.h:
+
+../Inc/HID/usb_hid_standards.h:
+
+../Inc/HID/usb_hid.h:
+
+../Inc/HID/usb_hid_usage_button.h:
+
+../Inc/HID/usb_hid_usage_desktop.h:
+
+../Inc/HID/usb_hid_usage_button.h:
+
+../Inc/HID/usb_hid_usage_desktop.h:

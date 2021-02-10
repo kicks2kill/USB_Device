@@ -17,6 +17,44 @@ void usbd_initialize(UsbDevice *usb_device)
 	usb_driver.connect();
 }
 
+
+void usbd_configure()
+{
+	usb_driver.configure_in_endpoint(
+		(configuration_descriptor_combination.usb_mouse_endpoint_descriptor.bEndpointAddress & 0x0F),
+		(configuration_descriptor_combination.usb_mouse_endpoint_descriptor.bmAttributes & 0x03),
+		configuration_descriptor_combination.usb_mouse_endpoint_descriptor.wMaxPacketSize
+	);
+
+	usb_driver.write_packet((configuration_descriptor_combination.usb_mouse_endpoint_descriptor.bEndpointAddress & 0x0F),
+			NULL,
+			0);
+
+}
+
+
+static void write_mouse_report()
+{
+	log_debug("Sending USB HID mouse report.");
+	HidReport hid_report = {
+			.x = 5
+	};
+
+	usb_driver.write_packet(
+			(configuration_descriptor_combination.usb_mouse_endpoint_descriptor.bEndpointAddress & 0x0F),
+			&hid_report,
+			sizeof(hid_report)
+			);
+}
+
+/**
+ * Normally, the new USB device address must be set only after the completion of the transaction (after the status stage) that transmitted the SET ADDRESS request.
+ * Otherwise, the sent/received packets will have the new address, while they should maintain the address 0 to finish the current transaction.
+ * However, in STM32F4 microcontrollers there is a cool feature that allows changing the address to the new address even before completing the transaction
+ *  (the PHY will take care of maintaining the address 0 till the end of the current transaction).
+ *
+ */
+
 static void process_standard_device_request()
 {
 	UsbRequest const *request = usbd_handle->ptr_out_buffer; //request will not be manipulated.
@@ -26,6 +64,7 @@ static void process_standard_device_request()
 
 		const uint8_t descriptor_type = request->wValue >> 8;
 		const uint16_t descriptor_length = request->wLength;
+		//const uint8_t descriptor_index = request->wValue & 0xFF;
 		switch(descriptor_type)
 		{
 		case USB_DESCRIPTOR_TYPE_DEVICE:
@@ -36,9 +75,60 @@ static void process_standard_device_request()
 			log_info(" Switching control stage to IN data");
 			usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_DATA_IN;
 			break;
+		case USB_DESCRIPTOR_TYPE_CONFIGURATION:
+			log_info(" - Get Configuration Descriptor");
+			usbd_handle->ptr_in_buffer = &configuration_descriptor_combination;
+			usbd_handle->in_data_size = descriptor_length;
+			log_info("Switching control transfer stage to IN-DATA");
+			usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_DATA_IN;
+			break;
 		}
 		break;
+	case USB_STANDARD_SET_ADDRESS: 											//Needed to handle SET ADDRESS request/response from/to device
+		log_info("Standard Set Address request received.");
+		const uint16_t device_addr = request->wValue;
+		usb_driver.set_device_address(device_addr);
+		usbd_handle->device_state = USB_DEVICE_STATE_ADDRESSED; 			//need to set device state to "ADDRESSED"
+		log_info("Switching control transfer stage to IN-STATUS");
+		usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_STATUS_IN;	//in, not out, because it has no data stage.
+		break;
+	case USB_STANDARD_SET_CONFIG:
+		log_info("Standard Set Configuration request received");
+		usbd_handle->configuration_value = request->wValue;
+		usbd_configure();
+		usbd_handle->device_state = USB_DEVICE_STATE_CONFIGURED;
+		log_info("Switching control transfer stage to IN-STATUS");
+		usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_STATUS_IN;
+		break;
 	}
+}
+
+static void process_class_interface_request()
+{
+	UsbRequest const *request = usbd_handle->ptr_out_buffer; //request will not be manipulated.
+	switch(request->bRequest)
+		{
+		case USB_HID_SETIDLE:
+			log_info("Switching control transfer stage to IN-STATUS.");
+			usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_STATUS_IN;
+			break;
+		}
+}
+
+static void process_standard_interface_request()
+{
+	UsbRequest const *request = usbd_handle->ptr_out_buffer; //request will not be manipulated.
+
+	switch(request->wValue >> 8)
+		{
+			case USB_DESCRIPTOR_TYPE_HID_REPORT:
+				usbd_handle->ptr_in_buffer = &hid_report_descriptor;
+				usbd_handle->in_data_size = sizeof(hid_report_descriptor);
+
+				log_info("Switching control transfer stage to IN-STATUS");
+				usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_DATA_IN;
+				break;
+		}
 }
 
 static void process_request()
@@ -49,7 +139,13 @@ static void process_request()
 	switch(request->bmRequestType & (USB_BM_REQUEST_TYPE_TYPE_MASK | USB_BM_REQUEST_TYPE_RECIPIENT_MASK))
 	{
 		case USB_BM_REQUEST_TYPE_TYPE_STANDARD | USB_BM_REQUEST_TYPE_RECIPIENT_DEVICE:
-			//process_standard_device_request();
+			process_standard_device_request();
+			break;
+		case USB_BM_REQUEST_TYPE_TYPE_CLASS | USB_BM_REQUEST_TYPE_RECIPIENT_INTERFACE:
+			process_class_interface_request();
+			break;
+		case USB_BM_REQUEST_TYPE_TYPE_STANDARD | USB_BM_REQUEST_TYPE_RECIPIENT_INTERFACE:
+			process_standard_interface_request();
 			break;
 	}
 }
@@ -71,14 +167,14 @@ static void process_control_transfer_stage()
 			log_info("Switching control stage to IN-DATA IDLE");
 			usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_DATA_IN_IDLE;
 
-			if(!usbd_handle->in_data_size) //if data equals 0
+			if(!usbd_handle->in_data_size) 								//if data equals 0
 			{
-				if(data_size == device_descriptor.bMaxPacketSize0) //if the data size equals our packet size
+				if(data_size == device_descriptor.bMaxPacketSize0) 		//if the data size equals our packet size
 				{
 					log_info("Switching control stage to IN-DATA ZERO");
 					usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_DATA_IN_ZERO;
 				}
-				else	//transfer control to OUT endpoint
+				else													//transfer control to OUT endpoint
 				{
 					log_info("Switching control stage to OUT-DATA");
 					usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_DATA_OUT;
@@ -92,6 +188,11 @@ static void process_control_transfer_stage()
 			log_info("Switching control stage to SETUP");
 			usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_SETUP;
 			break;
+		case USB_CONTROL_STAGE_STATUS_IN:
+			usb_driver.write_packet(0,NULL,0);								//Should send 0 length data packet to host after initial 8 bits
+			log_info("Switching control transfer stage to SETUP");
+			usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_SETUP;	//Reset back to SETUP stage
+			break;
 	}
 }
 
@@ -99,6 +200,7 @@ static void usb_polled_handler()
 {
 	process_control_transfer_stage();
 }
+
 
 static void in_transfer_completed_handler(uint8_t endpoint_number)
 {
@@ -114,6 +216,15 @@ static void in_transfer_completed_handler(uint8_t endpoint_number)
 		log_info("Switching control stage to OUT-STATUS");
 		usbd_handle->control_transfer_stage = USB_CONTROL_STAGE_STATUS_OUT;
 	}
+	if (endpoint_number == (configuration_descriptor_combination.usb_mouse_endpoint_descriptor.bEndpointAddress & 0x0F))
+	{
+		write_mouse_report();
+	}
+}
+
+static void out_transfer_completed_handler(uint8_t endpoint_number)
+{
+
 }
 
 void usbd_poll()
@@ -146,6 +257,6 @@ UsbEvents usb_events = {
 		.on_usb_reset_received = &usbrst_handler,
 		.on_setup_data_received = &setup_data_received_handler,
 		.on_usb_polled = &usb_polled_handler,
-		.on_in_transfer_completed = &in_transfer_completed_handler
-		//TODO
+		.on_in_transfer_completed = &in_transfer_completed_handler,
+		.on_out_transfer_completed = &out_transfer_completed_handler
 };
